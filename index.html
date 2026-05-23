@@ -36,7 +36,9 @@
                 <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
                 Aptis Writing B2-C Audio Player
             </h1>
-            <div class="text-sm opacity-80 hidden sm:block">AI Text-to-Speech Companion</div>
+            <div class="text-sm opacity-80 hidden sm:flex items-center gap-2">
+                <input type="password" id="userApiKey" placeholder="Nhập Gemini API Key của bạn..." class="text-gray-900 text-xs rounded px-2 py-1 w-56 border-none outline-none focus:ring-2 focus:ring-blue-300" title="Lấy Key tại aistudio.google.com">
+            </div>
         </div>
     </header>
 
@@ -185,8 +187,8 @@
         }
 
         // Gemini TTS API Call with exponential backoff
-        async function generateTTS(text, voice) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+        async function generateTTS(text, voice, activeKey) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${activeKey}`;
             const payload = {
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: {
@@ -305,8 +307,16 @@
 
         generateBtn.onclick = async () => {
             const textToSpeech = currentText.value.trim();
+            const userKeyInput = document.getElementById('userApiKey')?.value.trim();
+            const activeKey = userKeyInput || apiKey;
+
             if (!textToSpeech) {
                 errorMsg.textContent = "Vui lòng nhập nội dung văn bản trước khi tạo audio.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            if (!activeKey) {
+                errorMsg.textContent = "Thiếu API Key. Nếu bạn chạy file này trên máy tính (offline), vui lòng nhập Gemini API Key vào ô ở góc phải bên trên (Lấy key miễn phí tại aistudio.google.com).";
                 errorMsg.classList.remove('hidden');
                 return;
             }
@@ -325,7 +335,7 @@
 
             try {
                 const voice = voiceSelect.value;
-                const wavBlob = await generateTTS(textToSpeech, voice);
+                const wavBlob = await generateTTS(textToSpeech, voice, activeKey);
                 audioBlobUrl = URL.createObjectURL(wavBlob);
                 
                 audioPlayer.src = audioBlobUrl;
