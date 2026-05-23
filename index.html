@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aptis Writing Audio Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white shadow-md z-10 shrink-0">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+                Aptis Writing B2-C Audio Player
+            </h1>
+            <div class="text-sm opacity-80 hidden sm:block">AI Text-to-Speech Companion</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Sidebar: Topic List -->
+        <aside class="w-full md:w-1/3 bg-white border-r border-gray-200 flex flex-col h-[40vh] md:h-full shrink-0">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="font-semibold text-gray-700">Danh sách 25 Chủ đề</h2>
+            </div>
+            <ul id="topicList" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                <!-- Topics injected via JS -->
+            </ul>
+        </aside>
+
+        <!-- Right Panel: Audio & Text -->
+        <section class="flex-1 flex flex-col bg-gray-50 h-[60vh] md:h-full overflow-hidden">
+            <div class="p-6 md:p-8 flex-1 overflow-y-auto">
+                <div id="welcomeState" class="h-full flex flex-col items-center justify-center text-gray-400">
+                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    <p class="text-lg font-medium text-gray-600">Chọn một chủ đề bên trái để bắt đầu</p>
+                    <p class="text-sm mt-2 text-center max-w-md">Ứng dụng sẽ sử dụng AI để tạo file âm thanh đọc đoạn hội thoại tiếng Anh chuẩn xác, giúp bạn luyện nghe và phát âm.</p>
+                </div>
+
+                <div id="contentState" class="hidden h-full flex flex-col">
+                    <h2 id="currentTitle" class="text-2xl font-bold text-blue-800 mb-4 border-b pb-2"></h2>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-0 mb-6 flex-1 flex flex-col min-h-[200px]">
+                        <textarea id="currentText" class="w-full h-full p-5 text-gray-700 leading-relaxed text-lg resize-none outline-none border-none bg-transparent rounded-xl focus:ring-2 focus:ring-blue-100" placeholder="Nhập văn bản tiếng Anh của bạn vào đây..."></textarea>
+                    </div>
+
+                    <!-- Audio Controls Panel -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 shrink-0">
+                        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4">
+                            <div class="flex items-center w-full sm:w-auto">
+                                <label class="text-sm font-medium text-gray-700 mr-3">Giọng đọc AI:</label>
+                                <select id="voiceSelect" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+                                    <option value="Kore">Kore (Nữ 1 - Trầm ấm)</option>
+                                    <option value="Aoede">Aoede (Nữ 2 - Sáng)</option>
+                                    <option value="Puck">Puck (Nam 1 - Trầm)</option>
+                                    <option value="Charon">Charon (Nam 2 - Sáng)</option>
+                                </select>
+                            </div>
+                            
+                            <button id="generateBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span id="generateBtnText">Tạo Audio & Nghe</span>
+                            </button>
+                        </div>
+
+                        <div id="errorMsg" class="hidden text-red-500 text-sm mb-4 bg-red-50 p-3 rounded-lg border border-red-100"></div>
+
+                        <!-- Audio Player -->
+                        <div id="playerContainer" class="hidden flex-col items-center w-full space-y-4 pt-2 border-t">
+                            <audio id="audioPlayer" controls class="w-full h-12"></audio>
+                            <a id="downloadBtn" href="#" download="aptis_audio.wav" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Tải Audio về máy (.wav)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const apiKey = ""; // Runtime key
+        
+        // Comprehensive B2-C text for all 25 topics (condensed for listening practice focusing on Part 3 and 4)
+        const topics = [
+            { id: 1, title: "1. Photograph Club", text: "Topic 1: Photograph Club. In group chat discussions, I explained that I utilize cloud storage services like Google Drive and iCloud to ensure my high-resolution images are securely backed up. To spark inspiration, I recommend exploring diverse genres like street or macro photography. Beyond technical proficiency, a successful photographer possesses a keen eye for detail. For the formal email to the club: Dear Club President, I am writing to propose a few suggestions regarding our upcoming photography exhibition. Firstly, I highly recommend organizing the event around a compelling and universal theme. Furthermore, we could implement interactive elements to engage visitors. Finally, utilizing social media platforms for targeted advertising will be crucial in reaching photography enthusiasts. Yours sincerely." },
+            { id: 2, title: "2. Walking Club", text: "Topic 2: Walking Club. Regarding daily habits, I went for a brisk walk around the local lake yesterday evening. It was incredibly refreshing and helped me clear my mind. To encourage others, we can organize weekly group challenges with small incentives to foster a sense of community. Modern reliance on convenient transportation has drastically reduced physical activity. For the formal email: Dear Club President, I am writing to share my thoughts on the proposed walk across European countries. An international expedition of this scale requires substantial financial commitment, rigorous physical preparation, and extensive logistical planning. Instead, I respectfully suggest we focus on organizing a domestic long-distance walking tour, perhaps traversing a scenic national park. Yours sincerely." },
+            { id: 3, title: "3. Gardening Club", text: "Topic 3: Gardening Club. I joined this club to expand my knowledge of organic horticulture. I have a modest rooftop garden filled with a variety of herbs and vibrant orchids. Gardening is increasingly popular, especially in urban areas, as city dwellers adopt balcony gardening to grow their own organic produce. Regarding the cancelled event: Dear Club Manager, I am writing in response to the cancellation of The Japanese Garden talk show. As many members have already attended the alternative British Garden presentation, repeating this topic might lead to low attendance. Instead, I suggest we use this time slot for an interactive workshop, such as a seed-exchange event or a discussion forum. Yours sincerely." },
+            { id: 4, title: "4. Cooking Club", text: "Topic 4: Cooking Club. When pressed for time, I usually prepare quick yet nutritious meals like grilled chicken salads or stir-fried vegetables. I strongly prefer shopping at local farmers' markets, as it guarantees access to the freshest organic produce. Teaching culinary skills at school equips children with vital life skills and fosters independence. Regarding the cancelled classes: Dear Club Manager, I am writing to express my profound dissatisfaction regarding the recent cancellation of next week's cooking classes. Stating that no refunds will be issued is highly unprofessional. I strongly urge the management to provide a guaranteed credit voucher for future classes, or hire a substitute chef to cover the lessons. Yours sincerely." },
+            { id: 5, title: "5. Home Living Club", text: "Topic 5: Home Living Club. I am drawn to smart homes that seamlessly integrate modern technology with eco-friendly designs. While old buildings boast historical charm, I strongly prefer modern buildings for their state-of-the-art amenities and superior insulation. Investing in interior design enhances aesthetic appeal and creates a comforting environment. Addressing the demolition plan: Dear Club Manager, I am writing to express my reservations regarding the proposal to demolish several old buildings in our area. Completely destroying these structures would mean erasing a vital part of our architectural heritage. Instead of demolition, I strongly propose a strategy of adaptive reuse and renovation. We could upgrade the interiors while preserving the historic facades. Yours sincerely." },
+            { id: 6, title: "6. Technology Club", text: "Topic 6: Technology Club. I remember when my hard drive crashed unexpectedly right before a major deadline, which taught me the invaluable lesson of utilizing automated cloud backups. I prefer watching films online because streaming platforms provide unparalleled convenience. Technological advancements have undoubtedly revolutionized communication and healthcare. Regarding the anonymous comments: Dear Club Manager, I fully support the proposal to dismantle the anonymous posting system. When individuals are allowed to hide their digital footprint, it often breeds cyberbullying and toxic behavior. By implementing a mandatory identity verification system where real names are displayed, we can foster accountability and mutual respect among members. Yours sincerely." },
+            { id: 7, title: "7. Fitness Club", text: "Topic 7: Fitness Club. I strongly prefer indoor exercise at a well-equipped gym because it provides a climate-controlled environment. While technology has promoted sedentary lifestyles, we can harness it, like using fitness trackers, to monitor our health. To maintain peak physical condition, I adhere to a rigorous schedule of high-intensity interval training. Regarding the club fees: Dear Club Manager, while I acknowledge the urgent need for new facilities, I strongly oppose a 50 percent increase in membership fees. Such a drastic financial burden would alienate many members. Instead, I highly recommend organizing a community fundraising or sponsorship event, such as a charity run or a fitness marathon. Yours sincerely." },
+            { id: 8, title: "8. Book Club", text: "Topic 8: Book Club. I am particularly fascinated by historical fiction and psychological thrillers, as they provide profound insights into human nature. While modern lifestyles are hectic, utilizing audiobooks during daily commutes can seamlessly integrate reading into a busy schedule. Although e-books offer convenience, traditional printed books provide a unique tactile experience. Regarding the library closure: Dear Club Manager, I am writing to express my deep concern regarding the proposed plan to close our public library. Instead of shutting it down, I strongly recommend revitalizing the space. We could organize interactive events such as author meet-and-greets or literary workshops to significantly increase foot traffic. Yours sincerely." },
+            { id: 9, title: "9. Science Club", text: "Topic 9: Science Club. I vividly recall conducting hands-on chemistry experiments at school, which deeply stimulated my curiosity. Technology is a double-edged sword; while it revolutionizes global communication, overreliance can lead to sedentary lifestyles. Marie Curie is my ultimate role model due to her relentless dedication to research. Regarding the exhibition: Dear Club President, to effectively engage a diverse demographic, I propose incorporating interactive exhibits like virtual reality simulations for children. Regarding the ticketing policy, I strongly advocate for granting free admission. Imposing an entry fee might deter low-income families, defeating our goal of promoting scientific literacy. Yours sincerely." },
+            { id: 10, title: "10. Food Club", text: "Topic 10: Food Club. I strongly prefer shopping at local farmers' markets to guarantee access to locally sourced organic produce while supporting the community's economy. While ordering takeout offers undeniable convenience, it lacks the essential nutritional value found in wholesome, home-cooked meals. The excessive consumption of highly processed fast food is a primary contributor to the obesity epidemic. Regarding the chef meeting: Dear Club Manager, to ensure the event is inclusive for beginners, I suggest asking the chefs to conduct a Culinary Fundamentals masterclass. This could involve live demonstrations of essential knife skills and time-saving meal prep strategies. Yours sincerely." },
+            { id: 11, title: "11. Museum Club", text: "Topic 11: Museum Club. During a school field trip, seeing colossal dinosaur fossils sparked my lifelong fascination with natural history. I highly recommend the History Museum, as it provides invaluable insights into cultural heritage and ancient civilizations. Integrating modern technologies like virtual reality transforms passive observation into an immersive experience. Regarding the entrance fee: Dear Museum Manager, I am writing to express my perspective on the proposal to introduce a mandatory entrance fee. Implementing a flat fee could inadvertently alienate lower-income families. Instead, I propose implementing a tiered pricing system or actively promoting voluntary donations through prominently placed contribution boxes. Yours sincerely." },
+            { id: 12, title: "12. Travel Club", text: "Topic 12: Travel Club. My first solo backpacking trip to Europe significantly fostered my self-reliance and problem-solving skills. Vietnam boasts spectacular destinations, ranging from the majestic limestone karsts of Ha Long Bay to the ancient streets of Hoi An. Trekking through the rugged terrain of the Himalayas was my most thrilling adventure. Regarding foreign tourists: Dear Club Manager, to overcome the language barrier seamlessly, I highly recommend recruiting bilingual volunteers to act as dedicated guides. Additionally, the club should prepare multilingual brochures and utilize reliable translation software during events to ensure a hospitable welcome. Yours sincerely." },
+            { id: 13, title: "13. Debate Club", text: "Topic 13: Debate Club. I stay informed by actively reading reputable international news portals, which ensures I receive unbiased perspectives. To make a good impression in a debate, maintain steady eye contact and back up your logical arguments with verifiable empirical evidence. Analyzing opposing viewpoints is paramount for avoiding cognitive bias. Regarding youth recruitment: Dear Club Manager, the two most critical benefits of debating are the cultivation of advanced critical thinking and the refinement of public speaking skills. Debating forces individuals to analyze complex issues from multiple angles and articulately defend their ideas under pressure, which are highly sought-after leadership traits. Yours sincerely." },
+            { id: 14, title: "14. Language Club", text: "Topic 14: Language Club. I enrolled in this course to master Spanish, which is crucial for my career relocation. It took me nearly a month to find a program that prioritized advanced conversational practice over tedious grammatical memorization. I expect to gain the confidence required to conduct professional business negotiations. Regarding my absence: Dear Professor Smith, unfortunately, an unforeseen family emergency has arisen out of town, making it impossible for me to attend the final session. I would like to express my profound gratitude for your exceptional guidance. Your immersive teaching methods have significantly elevated my linguistic capabilities. Yours sincerely." },
+            { id: 15, title: "15. Film and Television Club", text: "Topic 15: Film and Television Club. I vastly prefer watching films with friends, as engaging in analytical discussions about the directors' hidden motives makes the experience more rewarding. Unrestricted television consumption is highly detrimental to children, impairing their physical health and hindering cognitive development. To relax, I dim the ambient lighting to create a cinematic atmosphere. Regarding the cancelled show: Dear Club Manager, I am quite concerned by the club's lack of a contingency plan for the Talk Show cancellation. Moving forward, I strongly suggest that the committee always prepares a secondary activity, such as screening a classic film or hosting a member-led debate. Yours sincerely." },
+            { id: 16, title: "16. Nature Club", text: "Topic 16: Nature Club. I have a profound affinity for pristine national parks, as their tranquil ambiance provides a sanctuary from urban pollution. A larger club membership amplifies our advocacy efforts and facilitates larger-scale clean-up campaigns. I joined to actively participate in conservation projects and minimize our ecological footprint. Regarding the youth campaign: Dear Club Manager, to successfully transition children away from computer games, we must offer stimulating outdoor activities like nature-based scavenger hunts or wilderness survival workshops. Furthermore, we should launch targeted social media campaigns highlighting the profound physical and cognitive benefits of outdoor play to their parents. Yours sincerely." },
+            { id: 17, title: "17. Music Club", text: "Topic 17: Music Club. I listen to music almost constantly, as it significantly enhances my focus and maintains a positive mood. Music serves as a universal language that reflects a nation's history and preserves its cultural heritage. Instead of forcing children into music lessons, try exposing them to various genres to build genuine interest. Regarding the noise complaints: Dear Club Manager, maintaining a harmonious relationship with our community is vital. I strongly recommend implementing strict operational hours, ensuring that all amplified music ceases by 10 PM. Furthermore, we should seriously consider investing in professional acoustic treatment and soundproofing for the concert hall. Yours sincerely." },
+            { id: 18, title: "18. English Club", text: "Topic 18: English Club. I focus on intensive, immersive practices like speaking with native tutors to maximize my learning efficiency. English acts as a vital bridge for cross-cultural communication, international business, and academic research. I utilize English daily to correspond with overseas clients. Regarding the event: Dear Club Manager, to appeal to both younger and older demographics, I propose organizing an Intergenerational Cultural Exchange Festival. We could set up interactive booths where members practice English by discussing different countries' traditions, foods, and music. This inclusive approach avoids intimidating academic formats and fosters a welcoming environment. Yours sincerely." },
+            { id: 19, title: "19. Outdoor Club", text: "Topic 19: Outdoor Club. If the weather is bad, I opt for indoor rock climbing or conduct meticulous maintenance on my camping gear. When hiking, thorough preparation is paramount; always carry a comprehensive first-aid kit and sufficient hydration. In my country, camping and cycling are exceptionally popular weekend escapes. Regarding the summer trip: Dear Club Manager, taking into consideration the diverse age range of our members, I strongly suggest choosing a coastal destination over the mountains. Mountainous terrain often requires a high level of physical fitness, which could exhaust our elderly members. Conversely, a coastal resort offers unparalleled accessibility and a wide variety of activities for everyone. Yours sincerely." },
+            { id: 20, title: "20. Business Club", text: "Topic 20: Business Club. An artisanal bakery nearby is thriving because they use locally sourced ingredients and maintain exceptional customer service. To be successful, a new shop must establish a Unique Selling Proposition to stand out in a saturated market. A successful entrepreneur requires profound resilience and solid financial literacy. Regarding the startup initiatives: Dear Club Manager, I am writing to express my support for offering free educational courses. While a call center provides immediate troubleshooting, comprehensive educational courses represent a proactive investment. Equipping emerging entrepreneurs with foundational knowledge in financial management and strategic planning will empower them to build viable, sustainable enterprises. Yours sincerely." },
+            { id: 21, title: "21. Social Club", text: "Topic 21: Social Club. I met my closest friends during university group projects, where we discovered our shared work ethics. To make friends in a new city, I highly recommend volunteering, as it naturally attracts like-minded individuals. While social media facilitates rapid connections, deep friendships still require face-to-face engagement. Regarding the charity event: Dear Club Manager, to maximize our fundraising potential for impoverished areas, I propose organizing a formal Gala Dinner and Silent Auction. This type of event typically attracts high-value donors and generates significant revenue while providing excellent networking opportunities for our members. Yours sincerely." },
+            { id: 22, title: "22. Art Club", text: "Topic 22: Art Club. I have cherished a vintage film camera passed down from my grandfather, which holds immense sentimental value. Enrolling in a college course provides fundamental techniques and constructive critiques crucial for artistic development. When executed with artistic intent, street art transforms dull urban spaces into vibrant cultural landmarks. Regarding the guest speaker: Dear Club President, I highly recommend inviting a prominent Contemporary Digital Artist to speak about the Intersection of Traditional Techniques and Digital Media. Elderly members will be fascinated by how classic techniques are adapted, while younger demographics are inherently drawn to technology, ensuring enthusiastic attendance. Yours sincerely." },
+            { id: 23, title: "23. College Club", text: "Topic 23: College Club. I am majoring in Environmental Science because I am deeply concerned about global climate change. My college experience has been intellectually stimulating, providing invaluable opportunities for cultural exchange. Extracurricular sports are vital for students' physical and mental well-being, providing a necessary stress-relief mechanism. Regarding the exam schedule: Dear College Administrator, the sudden rescheduling of the end-of-course exams to two weeks earlier creates a significant logistical nightmare. Truncating our preparation time will inevitably lead to immense stress and negatively impact academic performance. I respectfully urge the administration to revert to the original exam schedule. Yours sincerely." },
+            { id: 24, title: "24. Car Club", text: "Topic 24: Car Club. Dear Club Manager, I am writing to submit my recommendations for the representatives to participate in the European cross-country driving program. For the main driver, I strongly nominate Mr. Robert Hayes, who possesses an impeccable driving record and extensive experience in endurance driving. For the passenger position, I recommend Ms. Sarah Jenkins. Her background in automotive engineering equips her with essential mechanical troubleshooting skills, which are crucial for long-distance journeys. Their combined expertise ensures safety, reliability, and excellent representation of our club on an international level. Yours sincerely." },
+            { id: 25, title: "25. Community Club", text: "Topic 25: Community Club. Volunteering fosters civic engagement and empathy, equipping individuals with invaluable soft skills while supporting marginalized groups. For youth, volunteering transcends traditional classroom education by cultivating a profound sense of social responsibility. I joined to utilize my organizational skills to initiate sustainable community projects. Regarding new activities: Dear Club Manager, to attract active participants, we must enhance our digital presence by launching a targeted social media campaign featuring video testimonials. Additionally, I suggest initiating a Youth Mentorship Program, where older members guide teenagers in organizing small-scale local events, cultivating the next generation of community leaders. Yours sincerely." }
+        ];
+
+        let currentTopic = null;
+        let audioBlobUrl = null;
+        let isGenerating = false;
+
+        // Convert Base64 PCM16 to WAV Blob
+        function pcmToWav(pcmBase64, sampleRate = 24000) {
+            const binaryString = atob(pcmBase64);
+            const pcmData = new Int16Array(binaryString.length / 2);
+            for (let i = 0; i < pcmData.length; i++) {
+                pcmData[i] = binaryString.charCodeAt(i * 2) | (binaryString.charCodeAt(i * 2 + 1) << 8);
+            }
+
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const wavBuffer = new ArrayBuffer(44 + pcmData.byteLength);
+            const view = new DataView(wavBuffer);
+
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.byteLength, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(36, 'data');
+            view.setUint32(40, pcmData.byteLength, true);
+
+            let offset = 44;
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(offset, pcmData[i], true);
+                offset += 2;
+            }
+
+            return new Blob([wavBuffer], { type: 'audio/wav' });
+        }
+
+        // Gemini TTS API Call with exponential backoff
+        async function generateTTS(text, voice) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            let retries = 5;
+            let delay = 1000;
+            
+            while (retries > 0) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errText}`);
+                    }
+                    
+                    const data = await response.json();
+                    const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+                    if (!inlineData) throw new Error("API response did not contain audio data.");
+
+                    const pcmBase64 = inlineData.data;
+                    const mimeType = inlineData.mimeType || "audio/pcm;rate=24000";
+                    let sampleRate = 24000;
+                    const mimeMatch = mimeType.match(/rate=(\d+)/);
+                    if (mimeMatch) sampleRate = parseInt(mimeMatch[1], 10);
+
+                    return pcmToWav(pcmBase64, sampleRate);
+                } catch (error) {
+                    console.error(`Attempt failed. Retries left: ${retries - 1}`, error);
+                    retries--;
+                    if (retries === 0) throw error;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // UI Logic
+        const topicListEl = document.getElementById('topicList');
+        const welcomeState = document.getElementById('welcomeState');
+        const contentState = document.getElementById('contentState');
+        const currentTitle = document.getElementById('currentTitle');
+        const currentText = document.getElementById('currentText');
+        const generateBtn = document.getElementById('generateBtn');
+        const generateBtnText = document.getElementById('generateBtnText');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const playerContainer = document.getElementById('playerContainer');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorMsg = document.getElementById('errorMsg');
+
+        function renderTopicList() {
+            // Mục nhập văn bản tuỳ chỉnh
+            const customLi = document.createElement('li');
+            customLi.className = 'cursor-pointer p-4 hover:bg-blue-50 transition-colors border-l-4 border-transparent hover:border-blue-500';
+            customLi.innerHTML = `<span class="font-bold text-blue-700">✨ Tạo Audio Tuỳ Chỉnh</span>`;
+            customLi.onclick = () => selectTopic('custom', customLi);
+            topicListEl.appendChild(customLi);
+
+            // Render 25 topics
+            topics.forEach((topic, index) => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-4 hover:bg-blue-50 transition-colors border-l-4 border-transparent hover:border-blue-500';
+                li.innerHTML = `<span class="font-medium text-gray-800">${topic.title}</span>`;
+                li.onclick = () => selectTopic(topic.id, li);
+                topicListEl.appendChild(li);
+            });
+        }
+
+        function selectTopic(id, element) {
+            if (isGenerating) return; // Prevent switching while generating
+
+            // UI Highlight
+            Array.from(topicListEl.children).forEach(child => {
+                child.classList.remove('bg-blue-50', 'border-blue-600', 'border-blue-500');
+                child.classList.add('border-transparent');
+            });
+            element.classList.remove('border-transparent');
+            element.classList.add('bg-blue-50', 'border-blue-500');
+
+            // Set Data
+            if (id === 'custom') {
+                currentTopic = { id: 'custom', title: 'Tạo Audio Tuỳ Chỉnh' };
+                currentTitle.textContent = currentTopic.title;
+                currentText.value = '';
+                currentText.placeholder = 'Nhập hoặc dán văn bản tiếng Anh của bạn vào đây (Ví dụ: Hello, how are you?)...';
+            } else {
+                currentTopic = topics.find(t => t.id === id);
+                currentTitle.textContent = currentTopic.title;
+                currentText.value = currentTopic.text;
+                currentText.placeholder = 'Nhập văn bản tiếng Anh của bạn vào đây...';
+            }
+            
+            // Reset Player State
+            welcomeState.classList.add('hidden');
+            contentState.classList.remove('hidden');
+            playerContainer.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+            audioPlayer.pause();
+            if (audioBlobUrl) {
+                URL.revokeObjectURL(audioBlobUrl);
+                audioBlobUrl = null;
+            }
+        }
+
+        generateBtn.onclick = async () => {
+            const textToSpeech = currentText.value.trim();
+            if (!textToSpeech) {
+                errorMsg.textContent = "Vui lòng nhập nội dung văn bản trước khi tạo audio.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            if (isGenerating) return;
+            
+            isGenerating = true;
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-70', 'cursor-not-allowed');
+            generateBtnText.innerHTML = '<span class="loader"></span> Đang tạo Audio...';
+            playerContainer.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+            
+            if (audioBlobUrl) {
+                URL.revokeObjectURL(audioBlobUrl);
+            }
+
+            try {
+                const voice = voiceSelect.value;
+                const wavBlob = await generateTTS(textToSpeech, voice);
+                audioBlobUrl = URL.createObjectURL(wavBlob);
+                
+                audioPlayer.src = audioBlobUrl;
+                downloadBtn.href = audioBlobUrl;
+                const safeTitle = currentTopic.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                downloadBtn.download = `Aptis_B2_C_${safeTitle}.wav`;
+                
+                playerContainer.classList.remove('hidden');
+                playerContainer.classList.add('flex');
+                audioPlayer.play();
+                
+            } catch (err) {
+                errorMsg.textContent = "Lỗi khi tạo âm thanh. Vui lòng thử lại sau. Chi tiết: " + err.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                isGenerating = false;
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                generateBtnText.textContent = 'Tạo Audio & Nghe';
+            }
+        };
+
+        // Initialize
+        renderTopicList();
+    </script>
+</body>
+</html>
